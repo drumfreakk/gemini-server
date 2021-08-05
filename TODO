@@ -1,0 +1,45 @@
+LaGrange
+Gemini Docs
+
+
+C: Open connection
+S: Accepts connection
+C/S: Complete TLS Handshake
+C: Validates server certificate
+C: Sends request (one CRLF terminated line)
+S: Sends response header (one CRLF terminated line), closes connection under non-success conditions
+S: Sends response body (text or binary data)
+S: Closes connection
+C: Handles reponse
+
+Listen for new connections
+- Accept new connections, hand off to handler
+- - Complete TLS Handshake
+- - Recieve request (one line, till CRLF)
+- - Process request
+- - - Determine response / response code
+- - - Send response header
+- - - Send response body
+- - Close connection
+
+while True:
+	listen()
+
+handler():
+	TLS Handshake
+	
+	request = ""
+	for char in listen():
+		request.append(char)
+		if char == LF && request[-2] == CR:
+			request[-2] = \0
+			break
+	
+	find url
+	determine response code / header string / body
+
+	send(response code + " " + response header string + CRLF)
+	send(response body)
+	close()
+
+
