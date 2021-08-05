@@ -42,4 +42,3 @@ handler():
 	send(response body)
 	close()
 
-
