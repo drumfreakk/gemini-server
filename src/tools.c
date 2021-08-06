@@ -1,12 +1,16 @@
 #include "tools.h"
 
-void fatal(const char *message) {
+void fatal(const char *message){
+	error(message);
+	exit(-1);
+}
+
+void error(const char *message){
 	char error_message[100];
 
-	strcpy(error_message, "[!!] Fatal Error: ");
+	strcpy(error_message, "[!!] Error ");
 	strncat(error_message, message, 82);
 	perror(error_message);
-	exit(-1);
 }
 
 void dump(const char* string, const size_t len){

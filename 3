@@ -6,6 +6,7 @@
 #include <arpa/inet.h>	/* network byte order */
 
 #include "tools.h"
+#include <iconv.h>
 
 int main(){
 /* SETTING UP TLS */
@@ -42,6 +43,23 @@ int main(){
 	if(listen(host_fd, 5) == -1)
 		fatal("starting listening");
 
+//	char input_str[] = "abcde40 \r\ntest";
+//	dump(input_str, 15);
+	char* in_dos = (char*) malloc(15);
+	strcpy(in_dos, "abcde40 \r\ntest");
+	dump(in_dos)
+
+	iconv_t cd = iconv_open("UTF8", "ASCII");
+
+	int first=15, second=1024;
+	
+	iconv(cd, &input_str, (size_t*)&first, &buffer, (size_t*)&second);
+	dump(buffer, strlen(buffer) + 1);
+
+	iconv_close(cd);
+
+	return 0;
+
 /* MAIN LOOP */
 	while(1){
 		socklen_t addrlen = sizeof(struct sockaddr_in);
@@ -66,7 +84,7 @@ int main(){
 			recv_len = tls_read(client_tls, &buffer, 1024);
 		}	
 		char to_write[] = "40 aaa\r\n";
-		if(tls_write(client_tls, to_write, 8) == -1)
+		if(tls_write(client_tls, to_write, strlen(to_write)) == -1)
 			error("sending message");
 
 /*		send(client_fd, "Hello, world!\n", 14, 0);

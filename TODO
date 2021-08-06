@@ -22,23 +22,4 @@ Listen for new connections
 - - - Send response body
 - - Close connection
 
-while True:
-	listen()
-
-handler():
-	TLS Handshake
-	
-	request = ""
-	for char in listen():
-		request.append(char)
-		if char == LF && request[-2] == CR:
-			request[-2] = \0
-			break
-	
-	find url
-	determine response code / header string / body
-
-	send(response code + " " + response header string + CRLF)
-	send(response body)
-	close()
 
