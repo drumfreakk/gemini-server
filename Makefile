@@ -1,7 +1,6 @@
 CC = gcc
 CFLAGS := -Wall -Wextra -g -Werror=missing-declarations -Werror=redundant-decls
 #LFLAGS = -lncurses
-# OUTPUT := output
 SRC := src
 INCLUDE := include
 BIN := bin
@@ -19,22 +18,20 @@ MD = mkdir -p
 INCLUDES := $(patsubst %,-I%, $(INCLUDEDIRS:%/=%))
 #LIBS := $(patsubst %,-L%, $(LIBDIRS:%/=%))
 SOURCES := $(wildcard $(patsubst %,%/*.c, $(SOURCEDIRS)))
-#OBJECTS = bin/main.o
 OBJECTS := $(patsubst $(SRC)/%,$(BIN)/%,$(SOURCES:.c=.o))
 
-all: $(BIN) $(MAIN)
+all: bin main
 	@echo Executing "all" complete!
 
-$(BIN):
+bin:
 	$(MD) $(BIN)
 
-$(MAIN): $(OBJECTS)
-	$(CC) $(CFLAGS) -o $(MAIN) $(OBJECTS) -ltls
+main: $(OBJECTS)
+	$(CC) $(CFLAGS) -o $(BIN)/$(NAME) $(OBJECTS) -ltls
 #	$(CC) $(CFLAGS) $(INCLUDES) -o $(MAIN) $(OBJECTS) $(LFLAGS) # $(LIBS)
 
 $(BIN)/%.o: $(SRC)/%.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
-#	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 .PHONY: clean
 clean:

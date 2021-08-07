@@ -1,46 +1,12 @@
 #include "tools.h"
 
-//TODO fix the string lengths
+//TODO newline
+//TODO to file
 
 void fatal(const char *message){
-	char error_message[100];
-
-	strcpy(error_message, "[!!] Fatal Error ");
-	strncat(error_message, message, 83);
-	perror(error_message);
+	logger("FTL", message);
+	perror(NULL);
 	exit(-1);
-}
-
-void error(const char *message){
-	char error_message[100];
-
-	strcpy(error_message, "[EE] Error ");
-	strncat(error_message, message, 89);
-	perror(error_message);
-}
-
-void warning(const char *message){
-	char warn_message[100];
-	
-	strcpy(warn_message, "[WW] Warning: ");
-	strncat(warn_message, message, 86);
-	printf("%s\n", warn_message);
-}
-
-void info(const char *message){
-	char msg[100];
-
-	strcpy(msg, "[II] Info: ");
-	strncat(msg, message, 89);
-	printf("%s\n", msg);
-}
-
-void debug(const char *message){
-	char msg[100];
-
-	strcpy(msg, "[DD] Debug: ");
-	strncat(msg, message, 88);
-	printf("%s\n", msg);
 }
 
 void dump(const char* string, const size_t len){
