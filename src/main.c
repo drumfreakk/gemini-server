@@ -8,6 +8,8 @@
 #include "tools.h"
 #include "logger.h"
 
+#define WEBROOT "/home/kip/gemini-server/webroot/"
+
 int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr);
 
 int main(){
@@ -113,8 +115,6 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 		inet_ntoa(client_addr->sin_addr), ntohs(client_addr->sin_port), buffer);
 	logger("CONN", tempstring);
 	
-	dump(buffer, strlen(buffer));
-
 	/* Check the protocol is actually gemini */
 //		current_char = strpbrk(buffer, ":");
 	if(strncmp(buffer, "gemini", 6)){
@@ -124,21 +124,40 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 	
 	/* Check whether the hostname matches */
 	//TODO implement this
-	
+//	strtok(buffer, "/");
+//	current_char = strtok(NULL, "/");
+	// current_char is hostname
+
 	/* Split the path & query */
-/*		Must it include a trailing slash if it doesnt have a path?
-		reserved chars: ":" / "/" / "?" / "#" / "[" / "]" / "@"	
-		URI       = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
-		hier-part = ( "//" authority ) \
-		 			 ( path-abempty / path-absolute / path-rootless / path-empty )
-		The authority component is preceded by a double slash ("//") and is \
-		 terminated by the next slash ("/"), question mark ("?"), or number \
-		 sign ("#") character, or by the end of the URI.
-		If a URI contains an authority component, then the path component \
-		 must either be empty or begin with a slash ("/") character.
-*/
+	char path[1024];
+	strcpy(path, WEBROOT);
+	current_char = strchr(strchr(buffer, '/')+2, '/');
+	//TODO add webroot & index.gmi to path & store it somewhere
+//TODO dont need this cuz already trailing slash
+	if(current_char != NULL){
+		strcat(path, current_char);
+	}else{
+		strcat(path, "/");
+	}
+	dump(path, strlen(path)+1);
+	current_char = strpbrk(path, "#?");	//IS QUERY (an only with ?) (should probs use buffer tho)
+	if(current_char != NULL){
+		path[current_char-path] = '\0';
+	}
+	//TODO check if only thing in slashes is '.' or '..' or nah
+	if(path[strlen(path)-1] == '/'){
+		strcat(path, "index.gmi");
+	}
+
+	printf("%s\n", path);
+
+
+//TODO do something with the query
+
 	char to_write[] = "40 aaa\r\n";
 	if(tls_write(client_tls, to_write, 8) == -1) { logger("CONN", "Error sending message"); }
 
 	return 0;
 }
+
+
