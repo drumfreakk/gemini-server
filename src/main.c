@@ -10,7 +10,11 @@
 
 #define WEBROOT "/home/kip/gemini-server/webroot/"
 
+//TODO Allow configuration
+
+
 int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr);
+int send_header(const int status, const char* meta, struct tls *client_tls); 
 
 int main(){
 	struct tls_config *config_tls;
@@ -111,6 +115,7 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 			current_char++;
 		}
 	}
+//	strcpy(buffer, "gemini://192.168.2.45/../key.pem");
 	sprintf(tempstring, "Request got from %s:%d: %s", \
 		inet_ntoa(client_addr->sin_addr), ntohs(client_addr->sin_port), buffer);
 	logger("CONN", tempstring);
@@ -132,8 +137,7 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 	char path[1024];
 	strcpy(path, WEBROOT);
 	current_char = strchr(strchr(buffer, '/')+2, '/');
-	//TODO add webroot & index.gmi to path & store it somewhere
-//TODO dont need this cuz already trailing slash
+//TODO double slash doesnt matter right
 	if(current_char != NULL){
 		strcat(path, current_char);
 	}else{
@@ -145,6 +149,12 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 		path[current_char-path] = '\0';
 	}
 	//TODO check if only thing in slashes is '.' or '..' or nah
+	if(strstr(path, "/../") != NULL){
+		if(send_header(59, "Request contains bad file path", client_tls) == -1) { 
+			logger("CONN", "Error sending message");
+		}
+		return -1;
+	}
 	if(path[strlen(path)-1] == '/'){
 		strcat(path, "index.gmi");
 	}
@@ -154,10 +164,16 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 
 //TODO do something with the query
 
-	char to_write[] = "40 aaa\r\n";
-	if(tls_write(client_tls, to_write, 8) == -1) { logger("CONN", "Error sending message"); }
+	if(send_header(41, "testting", client_tls) == -1) { logger("CONN", "Error sending message"); }
 
 	return 0;
 }
 
+int send_header(const int status, const char* meta, struct tls *client_tls){
+	char header[1029];	//status(2)+space(1)+meta(1024)+crlf(2)
+	sprintf(header, "%d %s\r\n", status, meta);
 
+	logger("HDR", header);
+
+	return tls_write(client_tls, header, strlen(header));
+}
