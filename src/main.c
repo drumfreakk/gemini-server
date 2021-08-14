@@ -18,7 +18,7 @@
 
 #define WEBROOT "/home/kip/gemini-server/webroot/"
 
-//TODO Allow configuration
+//TODO Allow configuration via file
 
 
 int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr);
@@ -27,6 +27,9 @@ int send_header(const int status, const char* meta, struct tls *client_tls);
 void dump(const char* string, const size_t len);
 
 int main(){
+	logger_config.level = LVL_INFO;
+	logger_config.file[0] = '\0';
+
 	struct tls_config *config_tls;
 	struct tls *client_tls, *server_tls;
 
@@ -38,48 +41,48 @@ int main(){
 /*	Set up TLS	*/
 	config_tls = tls_config_new();
 	if(tls_config_set_protocols(config_tls, TLS_PROTOCOL_TLSv1_3) == -1){
-		logger("TLS", "Setting TLS protocols", LG_FTL);
+		logger(TG_TLS, "Setting TLS protocols", LG_FTL);
 	}
 	if(tls_config_set_keypair_file(config_tls, "/home/kip/gemini-server/keys/cert.pem",\
 	                                         "/home/kip/gemini-server/keys/key.pem") == -1){
-		logger("TLS", "Setting key/certificate", LG_FTL);
+		logger(TG_TLS, "Setting key/certificate", LG_FTL);
 	}
 
 	server_tls = tls_server();
-	if(server_tls == NULL) { logger("TLS", "Creating server", LG_FTL); }
-	if(tls_configure(server_tls, config_tls) == -1) { logger("TLS", "Configuring server", LG_FTL); }
+	if(server_tls == NULL) { logger(TG_TLS, "Creating server", LG_FTL); }
+	if(tls_configure(server_tls, config_tls) == -1) { logger(TG_TLS, "Configuring server", LG_FTL); }
 
 /*	Set up socket	*/
 	host_fd = socket(AF_INET, SOCK_STREAM, 0);
 	
 	// Let ports that weren't marked as closed but are in disuse be used
 	if(setsockopt(host_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
-		logger("SOCK", "Setting socket options", LG_ERR | LG_FTL);
+		logger(TG_SOCK, "Setting socket options", LG_ERR | LG_FTL);
 
 	local_addr.sin_family = AF_INET;
 	local_addr.sin_port = htons(1965);
 	local_addr.sin_addr.s_addr = 0;	// Automatically sets to local address apparently
 
 	if(bind(host_fd, (struct sockaddr *)&local_addr, sizeof(struct sockaddr)) == -1){
-		logger("SOCK", "Binding socket", LG_ERR | LG_FTL);
+		logger(TG_SOCK, "Binding socket", LG_ERR | LG_FTL);
 	}
 
-	if(listen(host_fd, 5) == -1) { logger("SOCK", "Starting listening", LG_ERR | LG_FTL); }
+	if(listen(host_fd, 5) == -1) { logger(TG_SOCK, "Starting listening", LG_ERR | LG_FTL); }
 
 /*	Main Loop	*/
 	while(1){
 		// Accept connection
 		socklen_t addrlen = sizeof(struct sockaddr_in);
 		client_fd = accept(host_fd, (struct sockaddr *)&client_addr, &addrlen);
-		if(client_fd == -1) { logger("SOCK", "Error accepting connection", LG_ERR); }
+		if(client_fd == -1) { logger(TG_SOCK, "Error accepting connection", LG_ERR); }
 
 		sprintf(tempstring, "New connection from %s:%d", \
 			inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-		logger("DBG", tempstring, 0);
+		logger(TG_DBG, tempstring, 0);
 
 		// Upgrade to TLS
 		if(tls_accept_socket(server_tls, &client_tls, client_fd) == -1){
-			logger("TLS", "Error upgrading to tls", 0);
+			logger(TG_TLS, "Error upgrading to tls", 0);
 		}
 			
 		// Handle the connection
@@ -90,7 +93,7 @@ int main(){
 
 		close(client_fd);
 
-		logger("DBG", "Closed connection", 0);
+		logger(TG_DBG, "Closed connection", 0);
 	}
 	tls_close(server_tls);
 	tls_free(server_tls);
@@ -109,6 +112,7 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 /*	Get the request	*/
 	current_char = buffer;
 //TODO Log
+//TODO remove nonprintable characters
 	while(1){
 		// Read & make sure something is read
 		if(tls_read(client_tls, current_char, 1) == 0){
@@ -137,11 +141,11 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 	}
 	sprintf(tempstring, "Request got from %s:%d: %s", \
 		inet_ntoa(client_addr->sin_addr), ntohs(client_addr->sin_port), buffer);
-	logger("CONN", tempstring, 0);
+	logger(TG_CONN, tempstring, 0);
 	
 /*	Check the protocol is actually gemini	*/
 	if(strncmp(buffer, "gemini", 6)){
-		logger("REQ", "Protocol is not gemini", 0);
+		logger(TG_CONN, "Protocol is not gemini", 0);
 		return -1;
 	}
 	
@@ -179,7 +183,7 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 		strcat(path, "index.gmi");
 	}
 
-	logger("DBG", path, 0);
+	logger(TG_DBG, path, 0);
 
 /*	Process the query	*/
 //TODO do something with the query (included with expanding return codes i guess?)
@@ -188,7 +192,7 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 	// Open the file
 	file_fd = open(path, O_RDONLY);	
 	if(file_fd == -1){
-		logger("FD", "Error getting requested file descriptor", LG_ERR);
+		logger(TG_FD, "Error getting requested file descriptor", LG_ERR);
 		if(errno==ENOENT){ //TODO add other error codes to here (like perms) (maybe)
 			return send_header(51, "File not found", client_tls);
 		} else{
@@ -199,7 +203,7 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 	// Read the file and immediately send it
 	read_len = read(file_fd, file_buffer, 1024);
 	if(read_len == -1){
-		logger("FD", "Error reading from file", LG_ERR);
+		logger(TG_FD, "Error reading from file", LG_ERR);
 		if(errno == EISDIR){
 			return send_header(51, "File not found", client_tls);
 		}
@@ -209,11 +213,11 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 	
 	while(read_len > 0){
 		if(tls_write(client_tls, file_buffer, read_len) == -1){
-			logger("CONN", "Error sending message body", 0);
+			logger(TG_MSG, "Error sending message body", 0);
 		}
 		read_len = read(file_fd, file_buffer, 1024);
 		if(read_len == -1){
-			logger("FD", "Error reading from file", LG_ERR);
+			logger(TG_FD, "Error reading from file", LG_ERR);
 		}
 	}
 
@@ -227,10 +231,10 @@ int send_header(const int status, const char* meta, struct tls *client_tls){
 	char header[1029];	//status(2)+space(1)+meta(1024)+crlf(2)
 	sprintf(header, "%d %.1024s\r\n", status, meta);
 
-	logger("HDR", header, 0);
+	logger(TG_HDR, header, 0);
 	
 	if(tls_write(client_tls, header, strlen(header)) == -1){
-		logger("CONN", "Error sending header", 0);
+		logger(TG_MSG, "Error sending header", 0);
 		return -1;
 	}
 	return 0;

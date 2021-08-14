@@ -3,7 +3,7 @@ bin
 *.pem
 keys
 webroot
-
+log
 
 # Prerequisites
 *.d
