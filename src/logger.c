@@ -1,7 +1,7 @@
 #include "logger.h"
 
 //TODO enum or defs of classes to set level
-
+//TODO print to file
 
 void logger(const char *tag, const char *message, char flags){
 	time_t now;
