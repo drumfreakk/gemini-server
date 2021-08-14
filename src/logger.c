@@ -2,6 +2,7 @@
 
 //TODO enum or defs of classes to set level
 //TODO print to file
+//TODO dont print CRLF of headers
 
 void logger(const char *tag, const char *message, char flags){
 	time_t now;

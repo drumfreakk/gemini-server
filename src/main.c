@@ -101,7 +101,6 @@ int main(){
 
 int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 	int file_fd, found_cr = 0;
-	off_t filesize;
 	ssize_t read_len;
 	char *current_char;
 	char buffer[1024], file_buffer[1024], path[1024], tempstring[2048];	//TODO remove the need for tempstring (own implementation ish of ...?)
@@ -157,7 +156,7 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 
 	// Start the path after the host
 	current_char = strchr(strchr(buffer, '/')+2, '/');
-	if(current_char == NULL)}
+	if(current_char == NULL){
 		strcat(path, "/");
 	} else{
 		strcat(path, current_char);
@@ -185,7 +184,6 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 /*	Process the query	*/
 //TODO do something with the query (included with expanding return codes i guess?)
 
-//TODO test gemini-site/docs
 /*	Open, read and send the appropriate file	*/
 	// Open the file
 	file_fd = open(path, O_RDONLY);	
@@ -198,16 +196,13 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 		}
 	}
 	
-	// Find the file size
-	filesize = lseek(file_fd, 0, SEEK_END);
-	if(lseek(file_fd, 0, SEEK_SET) == -1 || filesize == -1){
-		logger("FD", "Error getting filesize", LG_ERR);
-	}
-	
 	// Read the file and immediately send it
 	read_len = read(file_fd, file_buffer, 1024);
 	if(read_len == -1){
 		logger("FD", "Error reading from file", LG_ERR);
+		if(errno == EISDIR){
+			return send_header(51, "File not found", client_tls);
+		}
 		return send_header(41, "The server experiencend an error finding the requested file", client_tls);
 	}	
 	if(send_header(20, "text/gemini", client_tls) == -1){ return -1; }
