@@ -5,7 +5,15 @@
 #include <netinet/ip.h>	/* IPv4 () */
 #include <arpa/inet.h>	/* network byte order */
 
-#include "tools.h"
+/* open() */
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#include <string.h>		/* For dump() */
+
+#include <errno.h>		/* errno */
+
 #include "logger.h"
 
 #define WEBROOT "/home/kip/gemini-server/webroot/"
@@ -16,6 +24,8 @@
 int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr);
 int send_header(const int status, const char* meta, struct tls *client_tls); 
 
+void dump(const char* string, const size_t len);
+
 int main(){
 	struct tls_config *config_tls;
 	struct tls *client_tls, *server_tls;
@@ -25,82 +35,91 @@ int main(){
 	char tempstring[2048];
 
 
-/* SETTING UP TLS */
+/*	Set up TLS	*/
 	config_tls = tls_config_new();
-	//Does it really work without tlsv1.2?
 	if(tls_config_set_protocols(config_tls, TLS_PROTOCOL_TLSv1_3) == -1){
-		fatal("Setting TLS protocols");
+		logger("TLS", "Setting TLS protocols", LG_FTL);
 	}
 	if(tls_config_set_keypair_file(config_tls, "/home/kip/gemini-server/keys/cert.pem",\
 	                                         "/home/kip/gemini-server/keys/key.pem") == -1){
-		fatal("Setting key/certificate");
+		logger("TLS", "Setting key/certificate", LG_FTL);
 	}
 
 	server_tls = tls_server();
-	if(server_tls == NULL) { fatal("Creating server"); }
-	if(tls_configure(server_tls, config_tls) == -1) { fatal("Configuring server"); }
+	if(server_tls == NULL) { logger("TLS", "Creating server", LG_FTL); }
+	if(tls_configure(server_tls, config_tls) == -1) { logger("TLS", "Configuring server", LG_FTL); }
 
-/* SETTING UP THE SOCKET */
+/*	Set up socket	*/
 	host_fd = socket(AF_INET, SOCK_STREAM, 0);
-
+	
+	// Let ports that weren't marked as closed but are in disuse be used
 	if(setsockopt(host_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
-		fatal("Setting socket options");
+		logger("SOCK", "Setting socket options", LG_ERR | LG_FTL);
 
 	local_addr.sin_family = AF_INET;
 	local_addr.sin_port = htons(1965);
 	local_addr.sin_addr.s_addr = 0;	// Automatically sets to local address apparently
 
 	if(bind(host_fd, (struct sockaddr *)&local_addr, sizeof(struct sockaddr)) == -1){
-		fatal("Binding socket");
+		logger("SOCK", "Binding socket", LG_ERR | LG_FTL);
 	}
 
-	if(listen(host_fd, 5) == -1) { fatal("Starting listening"); }
+	if(listen(host_fd, 5) == -1) { logger("SOCK", "Starting listening", LG_ERR | LG_FTL); }
 
-/* MAIN LOOP */
+/*	Main Loop	*/
 	while(1){
+		// Accept connection
 		socklen_t addrlen = sizeof(struct sockaddr_in);
 		client_fd = accept(host_fd, (struct sockaddr *)&client_addr, &addrlen);
-		if(client_fd == -1) { logger("SOCK", "Error accepting connection"); }
+		if(client_fd == -1) { logger("SOCK", "Error accepting connection", LG_ERR); }
 
 		sprintf(tempstring, "New connection from %s:%d", \
 			inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-		logger("DBG", tempstring);
+		logger("DBG", tempstring, 0);
 
+		// Upgrade to TLS
 		if(tls_accept_socket(server_tls, &client_tls, client_fd) == -1){
-			logger("TLS", "Error upgrading to tls");
+			logger("TLS", "Error upgrading to tls", 0);
 		}
-		
+			
+		// Handle the connection
 		handle_connection(client_tls, &client_addr);
 		
 		tls_close(client_tls);
 		tls_free(client_tls);
 
 		close(client_fd);
+
+		logger("DBG", "Closed connection", 0);
 	}
 	tls_close(server_tls);
 	tls_free(server_tls);
-//TODO: properly clean up tls
-//Should be fixed now?
 	close(host_fd);
 
 	return 0;
 }
 
 int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
-	int recv_len, found_cr = 0;
+	int file_fd, found_cr = 0;
+	off_t filesize;
+	ssize_t read_len;
 	char *current_char;
-	char buffer[1024], tempstring[2048];	//TODO remove the need for tempstring
+	char buffer[1024], file_buffer[1024], path[1024], tempstring[2048];	//TODO remove the need for tempstring (own implementation ish of ...?)
+//TODO could use buffer for file_buffer, check once done query
 
+/*	Get the request	*/
 	current_char = buffer;
-		
+//TODO Log
 	while(1){
-		recv_len = tls_read(client_tls, current_char, 1);
-		if(recv_len == 0){ 
+		// Read & make sure something is read
+		if(tls_read(client_tls, current_char, 1) == 0){
 			return -1;
 		}
+		// No premature ends of the request
 		else if(*current_char == '\0'){
 			return -1;
 		}
+		// Terminate the string & stop recieving after CRLF
 		else if(*current_char == '\n' && found_cr == 1){
 			*(--current_char) = '\0';
 			break;
@@ -109,71 +128,136 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 			found_cr = 1;
 		}
 
-		if(current_char-buffer == 1023){	// Could be off by one
+//TODO Could be off by one
+		// Make sure there are no buffer overflows	
+		if(current_char-buffer == 1023){
 			return -1;
-		}else{
+		} else{
 			current_char++;
 		}
 	}
-//	strcpy(buffer, "gemini://192.168.2.45/../key.pem");
 	sprintf(tempstring, "Request got from %s:%d: %s", \
 		inet_ntoa(client_addr->sin_addr), ntohs(client_addr->sin_port), buffer);
-	logger("CONN", tempstring);
+	logger("CONN", tempstring, 0);
 	
-	/* Check the protocol is actually gemini */
-//		current_char = strpbrk(buffer, ":");
+/*	Check the protocol is actually gemini	*/
 	if(strncmp(buffer, "gemini", 6)){
-		logger("REQ", "Protocol is not gemini");
+		logger("REQ", "Protocol is not gemini", 0);
 		return -1;
 	}
 	
-	/* Check whether the hostname matches */
+/*	Check whether the hostname matches	*/
 	//TODO implement this
 //	strtok(buffer, "/");
 //	current_char = strtok(NULL, "/");
 	// current_char is hostname
 
-	/* Split the path & query */
-	char path[1024];
+/*	Split the path, query & fragment	*/
 	strcpy(path, WEBROOT);
+
+	// Start the path after the host
 	current_char = strchr(strchr(buffer, '/')+2, '/');
-//TODO double slash doesnt matter right
-	if(current_char != NULL){
-		strcat(path, current_char);
-	}else{
+	if(current_char == NULL)}
 		strcat(path, "/");
+	} else{
+		strcat(path, current_char);
 	}
-	dump(path, strlen(path)+1);
+	
+	// Crop off the query and fragment if present
 	current_char = strpbrk(path, "#?");	//IS QUERY (an only with ?) (should probs use buffer tho)
 	if(current_char != NULL){
 		path[current_char-path] = '\0';
 	}
-	//TODO check if only thing in slashes is '.' or '..' or nah
+
+	// Make sure it doesnt go backwards in the file tree
 	if(strstr(path, "/../") != NULL){
-		if(send_header(59, "Request contains bad file path", client_tls) == -1) { 
-			logger("CONN", "Error sending message");
-		}
+		send_header(59, "Request contains bad file path", client_tls); 
 		return -1;
 	}
+	
+	// Add index.gmi if necessary
 	if(path[strlen(path)-1] == '/'){
 		strcat(path, "index.gmi");
 	}
 
-	printf("%s\n", path);
+	logger("DBG", path, 0);
 
+/*	Process the query	*/
+//TODO do something with the query (included with expanding return codes i guess?)
 
-//TODO do something with the query
+//TODO test gemini-site/docs
+/*	Open, read and send the appropriate file	*/
+	// Open the file
+	file_fd = open(path, O_RDONLY);	
+	if(file_fd == -1){
+		logger("FD", "Error getting requested file descriptor", LG_ERR);
+		if(errno==ENOENT){ //TODO add other error codes to here (like perms) (maybe)
+			return send_header(51, "File not found", client_tls);
+		} else{
+			return send_header(41, "The server experiencend an error finding the requested file", client_tls);
+		}
+	}
+	
+	// Find the file size
+	filesize = lseek(file_fd, 0, SEEK_END);
+	if(lseek(file_fd, 0, SEEK_SET) == -1 || filesize == -1){
+		logger("FD", "Error getting filesize", LG_ERR);
+	}
+	
+	// Read the file and immediately send it
+	read_len = read(file_fd, file_buffer, 1024);
+	if(read_len == -1){
+		logger("FD", "Error reading from file", LG_ERR);
+		return send_header(41, "The server experiencend an error finding the requested file", client_tls);
+	}	
+	if(send_header(20, "text/gemini", client_tls) == -1){ return -1; }
+	
+	while(read_len > 0){
+		if(tls_write(client_tls, file_buffer, read_len) == -1){
+			logger("CONN", "Error sending message body", 0);
+		}
+		read_len = read(file_fd, file_buffer, 1024);
+		if(read_len == -1){
+			logger("FD", "Error reading from file", LG_ERR);
+		}
+	}
 
-	if(send_header(41, "testting", client_tls) == -1) { logger("CONN", "Error sending message"); }
+	close(file_fd);
+
 
 	return 0;
 }
 
 int send_header(const int status, const char* meta, struct tls *client_tls){
 	char header[1029];	//status(2)+space(1)+meta(1024)+crlf(2)
-	sprintf(header, "%d %s\r\n", status, meta);
+	sprintf(header, "%d %.1024s\r\n", status, meta);
 
-	logger("HDR", header);
+	logger("HDR", header, 0);
+	
+	if(tls_write(client_tls, header, strlen(header)) == -1){
+		logger("CONN", "Error sending header", 0);
+		return -1;
+	}
+	return 0;
+}
 
-	return tls_write(client_tls, header, strlen(header));
+void dump(const char* string, const size_t len){
+	long unsigned int i, char_no;
+	for(char_no = 0; char_no < len; char_no++){
+		printf("%02x ", string[char_no]);
+		if(((char_no%16)==15) || (char_no==len-1)){
+			for(i = 0; i < 15-(char_no%16); i++){
+				printf("   ");
+			}
+			printf("| ");
+			for(i = char_no-(char_no%16); i<=char_no; i++){
+				if((31 < string[i]) && (string[i] < 127)){
+					printf("%c", string[i]);
+				} else{
+					printf(".");
+				}
+			}
+			printf("\n");
+		}
+	}
 }

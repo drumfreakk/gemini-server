@@ -2,6 +2,7 @@ bin
 *.swp
 *.pem
 keys
+webroot
 
 
 # Prerequisites
