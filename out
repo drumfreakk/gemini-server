@@ -1,0 +1,47 @@
+Sun Aug 15 16:52:53 2021 [CONN]: Request got from 192.168.2.4:57040: gemini://192.168.2.45/
+Sun Aug 15 16:52:56 2021 [CONN]: Request got from 192.168.2.4:57044: gemini://192.168.2.45/
+Sun Aug 15 18:42:39 2021 [CONN]: Request got from 192.168.2.4:57062: gemini://192.168.2.45/test
+Sun Aug 15 18:42:39 2021 [FD  ]: Error getting requested file descriptor: No such file or directory
+Sun Aug 15 18:42:39 2021 [CONN]: Request got from 192.168.2.4:57066: gemini://192.168.2.45/test
+Sun Aug 15 18:42:39 2021 [FD  ]: Error getting requested file descriptor: No such file or directory
+Sun Aug 15 18:42:40 2021 [CONN]: Request got from 192.168.2.4:57068: gemini://192.168.2.45/test
+Sun Aug 15 18:42:40 2021 [FD  ]: Error getting requested file descriptor: No such file or directory
+Sun Aug 15 18:43:21 2021 [CONN]: Request got from 192.168.2.4:57070: gemini://192.168.2.45/test
+Sun Aug 15 18:43:21 2021 [FD  ]: Error getting requested file descriptor: No such file or directory
+Sun Aug 15 18:43:24 2021 [CONN]: Request got from 192.168.2.4:57072: gemini://192.168.2.45/
+Sun Aug 15 18:44:28 2021 [CONN]: Request got from 192.168.2.4:57074: gemini://192.168.2.45/
+Sun Aug 15 18:52:18 2021 [CONN]: Request got from 192.168.2.4:57080: gemini://192.168.2.45/
+Sun Aug 15 18:55:27 2021 [CONN]: Request got from 192.168.2.4:57084: gemini://192.168.2.45/
+Sun Aug 15 19:15:25 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 19:16:13 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 19:18:37 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 19:19:17 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 19:20:18 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 19:20:53 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 19:23:07 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 19:23:43 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 19:24:03 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 20:01:38 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 20:03:10 2021 [CONN]: Request got from 192.168.2.4:57086: gemini://192.168.2.45/
+Sun Aug 15 20:04:11 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 20:04:44 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 20:05:13 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 20:05:27 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 20:08:13 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 20:09:29 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 20:29:03 2021 [CONN]: Request got from 192.168.2.4:57088: gemini://192.168.2.45/
+Sun Aug 15 20:40:39 2021 [CONN]: Request got from 192.168.2.4:57090: gemini://192.168.2.45/
+Sun Aug 15 20:40:48 2021 [CONN]: Request got from 192.168.2.4:57092: gemini://192.168.2.45/
+Sun Aug 15 20:40:48 2021 [FD  ]: Error getting requested file descriptor: No such file or directory
+Sun Aug 15 20:41:08 2021 [CONN]: Request got from 192.168.2.4:57094: gemini://192.168.2.45/
+Sun Aug 15 20:41:28 2021 [CONN]: Request got from 192.168.2.4:51140: gemini://192.168.2.45:1966/test
+Sun Aug 15 20:41:28 2021 [FD  ]: Error getting requested file descriptor: No such file or directory
+Sun Aug 15 20:41:34 2021 [CONN]: Request got from 192.168.2.4:51142: gemini://192.168.2.45:1966/
+Sun Aug 15 20:41:36 2021 [CONN]: Request got from 192.168.2.4:51144: gemini://192.168.2.45:1966/test
+Sun Aug 15 20:41:36 2021 [FD  ]: Error getting requested file descriptor: No such file or directory
+Sun Aug 15 20:54:22 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 20:55:31 2021 [TLS ]: Setting key/certificate
+Sun Aug 15 20:56:15 2021 [CONN]: Request got from 192.168.2.4:57104: gemini://192.168.2.45/
+Sun Aug 15 21:18:32 2021 [SOCK]: Binding socket: Permission denied
+Sun Aug 15 21:22:17 2021 [CONN]: Request got from 192.168.2.4:57106: gemini://192.168.2.45/
+Sun Aug 15 21:22:27 2021 [CONN]: Request got from 192.168.2.4:57108: gemini://192.168.2.45/

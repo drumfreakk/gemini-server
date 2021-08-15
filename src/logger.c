@@ -44,10 +44,9 @@ void logger(int tag, const char *message, char flags){
 	} else {
 		snprintf(output, 2048, "%.24s [%-4s]: %s\n", ctime(&now), tag_txt, message);
 	}
+	printf("%s", output);
 
-	if(logger_config.file[0] == '\0'){
-		printf("%s", output);
-	} else{
+	if(logger_config.file[0] != '\0'){
 		FILE *stream = fopen(logger_config.file, "a");
 		if(stream == NULL){
 			fprintf(stderr, "Unable to open log file for output: %s\n", strerror(errno));

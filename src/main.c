@@ -15,13 +15,13 @@
 #include <errno.h>		/* errno */
 
 #include "logger.h"
+#include "getconfig.h"
 
-#define WEBROOT "/home/kip/gemini-server/webroot/"
 
 //TODO Allow configuration via file
 
 
-int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr);
+int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr, char *webroot);
 int send_header(const int status, const char* meta, struct tls *client_tls); 
 
 void dump(const char* string, const size_t len);
@@ -29,6 +29,16 @@ void dump(const char* string, const size_t len);
 int main(){
 	logger_config.level = LVL_INFO;
 	logger_config.file[0] = '\0';
+	char keyfile[1024] = "/home/kip/gemini-server/keys/key.pem";
+	char certfile[1024] = "/home/kip/gemini-server/keys/cert.pem";
+	char webroot[1024] = "/home/kip/gemini-server/webroot/";
+	int port = 1965;
+	int allow_tlsv1_2 = 0;
+	getconfig(logger_config.file, &logger_config.level, keyfile, certfile, &allow_tlsv1_2, webroot, &port);
+
+	if(allow_tlsv1_2 == 1){
+		allow_tlsv1_2 = TLS_PROTOCOL_TLSv1_2;
+	}
 
 	struct tls_config *config_tls;
 	struct tls *client_tls, *server_tls;
@@ -40,11 +50,10 @@ int main(){
 
 /*	Set up TLS	*/
 	config_tls = tls_config_new();
-	if(tls_config_set_protocols(config_tls, TLS_PROTOCOL_TLSv1_3) == -1){
+	if(tls_config_set_protocols(config_tls, TLS_PROTOCOL_TLSv1_3 | allow_tlsv1_2) == -1){
 		logger(TG_TLS, "Setting TLS protocols", LG_FTL);
 	}
-	if(tls_config_set_keypair_file(config_tls, "/home/kip/gemini-server/keys/cert.pem",\
-	                                         "/home/kip/gemini-server/keys/key.pem") == -1){
+	if(tls_config_set_keypair_file(config_tls, certfile, keyfile) == -1){
 		logger(TG_TLS, "Setting key/certificate", LG_FTL);
 	}
 
@@ -60,7 +69,7 @@ int main(){
 		logger(TG_SOCK, "Setting socket options", LG_ERR | LG_FTL);
 
 	local_addr.sin_family = AF_INET;
-	local_addr.sin_port = htons(1965);
+	local_addr.sin_port = htons(port);
 	local_addr.sin_addr.s_addr = 0;	// Automatically sets to local address apparently
 
 	if(bind(host_fd, (struct sockaddr *)&local_addr, sizeof(struct sockaddr)) == -1){
@@ -86,7 +95,7 @@ int main(){
 		}
 			
 		// Handle the connection
-		handle_connection(client_tls, &client_addr);
+		handle_connection(client_tls, &client_addr, webroot);
 		
 		tls_close(client_tls);
 		tls_free(client_tls);
@@ -102,7 +111,7 @@ int main(){
 	return 0;
 }
 
-int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
+int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr, char *webroot){
 	int file_fd, found_cr = 0;
 	ssize_t read_len;
 	char *current_char;
@@ -156,7 +165,7 @@ int handle_connection(struct tls *client_tls, struct sockaddr_in *client_addr){
 	// current_char is hostname
 
 /*	Split the path, query & fragment	*/
-	strcpy(path, WEBROOT);
+	strcpy(path, webroot);
 
 	// Start the path after the host
 	current_char = strchr(strchr(buffer, '/')+2, '/');
